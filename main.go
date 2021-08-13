@@ -18,7 +18,7 @@ func main() {
 
 	fmt.Println("Loading file:", filename)
 
-	chip := emu.NewChip()
+	chip := emu.NewConsole()
 	chip.LoadRom(filename)
 
 	ui.Run(chip)

@@ -2,7 +2,20 @@ package emu
 
 import "math/rand"
 
-func (chip *Chip) decodeExecute(instr uint16) bool {
+// fetch Fetches the next instruction and moves the pc.
+func (cons *Console) fetch() uint16 {
+	b0 := cons.memory[cons.pc]
+	b1 := cons.memory[cons.pc+1]
+	instruction := (uint16(b0) << 8) | uint16(b1)
+
+	cons.pc += 2
+	return instruction
+}
+
+// decodeExecute decodes the instruction and executes it.
+// It returns true if the screen needs to be drawn.
+func (cons *Console) decodeExecute(instr uint16) bool {
+	// Compute instructions arguments
 	x := (instr & uint16(0x0F00)) >> 8
 	y := (instr & uint16(0x00F0)) >> 4
 	n := uint8(instr & uint16(0x000F))
@@ -13,152 +26,152 @@ func (chip *Chip) decodeExecute(instr uint16) bool {
 
 	if instr == uint16(0x00E0) {
 		// clear screen
-		chip.clearScreen()
+		cons.clearBuffer()
 	}
 	if instr == uint16(0x00EE) {
-		// return
-		chip.PC = chip.pop()
+		// return from subroutine
+		cons.pc = cons.pop()
 	}
 
 	switch (instr & uint16(0xF000)) >> 12 {
 	case uint16(0x1):
 		// jump
-		chip.PC = nnn
+		cons.pc = nnn
 
 	case uint16(0x2):
 		// call
-		chip.push(chip.PC)
-		chip.PC = nnn
+		cons.push(cons.pc)
+		cons.pc = nnn
 
 	case uint16(0x3):
 		// skip equal
-		if chip.V[x] == nn {
-			chip.PC += 2
+		if cons.v[x] == nn {
+			cons.pc += 2
 		}
 
 	case uint16(0x4):
 		// skip not equal
-		if chip.V[x] != nn {
-			chip.PC += 2
+		if cons.v[x] != nn {
+			cons.pc += 2
 		}
 
 	case uint16(0x5):
 		// skip equal register
-		if chip.V[x] == chip.V[y] {
-			chip.PC += 2
+		if cons.v[x] == cons.v[y] {
+			cons.pc += 2
 		}
 
 	case uint16(0x6):
 		// set register vx
-		chip.V[x] = nn
+		cons.v[x] = nn
 
 	case uint16(0x8):
 		switch n {
 		case uint8(0x0):
 			// set
-			chip.V[x] = chip.V[y]
+			cons.v[x] = cons.v[y]
 
 		case uint8(0x1):
 			// OR
-			chip.V[x] |= chip.V[y]
+			cons.v[x] |= cons.v[y]
 
 		case uint8(0x2):
 			// AND
-			chip.V[x] &= chip.V[y]
+			cons.v[x] &= cons.v[y]
 
 		case uint8(0x3):
 			// XOR
-			chip.V[x] ^= chip.V[y]
+			cons.v[x] ^= cons.v[y]
 
 		case uint8(0x4):
 			// add carry
-			add := uint16(chip.V[x]) + uint16(chip.V[y])
-			chip.V[x] = uint8(add)
+			add := uint16(cons.v[x]) + uint16(cons.v[y])
+			cons.v[x] = uint8(add)
 
 			if add > 255 {
-				chip.V[15] = 1
+				cons.v[15] = 1
 			} else {
-				chip.V[15] = 0
+				cons.v[15] = 0
 			}
 
 		case uint8(0x5):
 			// sub (x - y)
-			if chip.V[x] > chip.V[y] {
-				chip.V[15] = 1
+			if cons.v[x] > cons.v[y] {
+				cons.v[15] = 1
 			} else {
-				chip.V[15] = 0
+				cons.v[15] = 0
 			}
-			chip.V[x] -= chip.V[y]
+			cons.v[x] -= cons.v[y]
 
 		case uint8(0x6):
 			// shift right
-			if chip.Config.cosmac {
-				chip.V[x] = chip.V[y]
+			if cons.config.cosmac {
+				cons.v[x] = cons.v[y]
 			}
-			chip.V[15] = chip.V[x] & 1
-			chip.V[x] >>= 1
+			cons.v[15] = cons.v[x] & 1
+			cons.v[x] >>= 1
 
 		case uint8(0x7):
 			// sub (y - x)
-			if chip.V[y] > chip.V[x] {
-				chip.V[15] = 1
+			if cons.v[y] > cons.v[x] {
+				cons.v[15] = 1
 			} else {
-				chip.V[15] = 0
+				cons.v[15] = 0
 			}
-			chip.V[x] = chip.V[y] - chip.V[x]
+			cons.v[x] = cons.v[y] - cons.v[x]
 
 		case uint8(0xE):
 			// shift left
-			if chip.Config.cosmac {
-				chip.V[x] = chip.V[y]
+			if cons.config.cosmac {
+				cons.v[x] = cons.v[y]
 			}
-			chip.V[15] = chip.V[x] & 1
-			chip.V[x] <<= 1
+			cons.v[15] = cons.v[x] & 1
+			cons.v[x] <<= 1
 		}
 
 	case uint16(0x7):
 		// add value to register vx
-		chip.V[x] += nn
+		cons.v[x] += nn
 
 	case uint16(0x9):
 		// skip not equal register
-		if chip.V[x] != chip.V[y] {
-			chip.PC += 2
+		if cons.v[x] != cons.v[y] {
+			cons.pc += 2
 		}
 
 	case uint16(0xA):
 		// set index register I
-		chip.I = nnn
+		cons.i = nnn
 
 	case uint16(0xB):
-		if chip.Config.cosmac {
-			chip.PC = nnn + uint16(chip.V[0])
+		if cons.config.cosmac {
+			cons.pc = nnn + uint16(cons.v[0])
 		} else {
-			chip.PC = nnn + uint16(chip.V[x])
+			cons.pc = nnn + uint16(cons.v[x])
 		}
 
 	case uint16(0xC):
 		rndByte := uint8(rand.Int31n(256))
-		chip.V[x] = rndByte & nn
+		cons.v[x] = rndByte & nn
 
 	case uint16(0xD):
 		// display/draw
-		xCoord := chip.V[x] % WIDTH
-		yCoord := chip.V[y] % HEIGHT
+		xCoord := cons.v[x] % BUFFER_WIDTH
+		yCoord := cons.v[y] % BUFFER_HEIGHT
 
-		chip.V[15] = 0
+		cons.v[15] = 0
 
-		for i := uint8(0); i < n && yCoord+i < HEIGHT; i++ {
-			bt := chip.Memory[chip.I+uint16(i)]
+		for i := uint8(0); i < n && yCoord+i < BUFFER_HEIGHT; i++ {
+			bt := cons.memory[cons.i+uint16(i)]
 
-			for j := uint8(0); j < 8 && xCoord+j < WIDTH; j++ {
+			for j := uint8(0); j < 8 && xCoord+j < BUFFER_WIDTH; j++ {
 				bit := (bt >> (7 - j)) & 1
 
 				if bit == 1 {
-					chip.setBit(xCoord+j, yCoord+i, 1)
+					cons.xorBit(xCoord+j, yCoord+i, 1)
 
-					if chip.GetBit(xCoord+j, yCoord+i) == 1 {
-						chip.V[15] = 1
+					if cons.GetBit(xCoord+j, yCoord+i) == 1 {
+						cons.v[15] = 1
 					}
 				}
 			}
@@ -181,22 +194,22 @@ func (chip *Chip) decodeExecute(instr uint16) bool {
 		switch nn {
 		case uint8(0x07):
 			// vx to delay timer
-			chip.V[x] = chip.DelayTimer
+			cons.v[x] = cons.delayTimer
 
 		case uint8(0x15):
 			// delay timer to vx
-			chip.DelayTimer = chip.V[x]
+			cons.delayTimer = cons.v[x]
 
 		case uint8(0x18):
 			// sound timer to vx
-			chip.SoundTimer = chip.V[x]
+			cons.soundTimer = cons.v[x]
 
 		case uint8(0x1E):
 			// add to index
-			chip.I += uint16(chip.V[x])
+			cons.i += uint16(cons.v[x])
 
-			if !chip.Config.cosmac && chip.I > uint16(0x1000) {
-				chip.V[15] = 1
+			if !cons.config.cosmac && cons.i > uint16(0x1000) {
+				cons.v[15] = 1
 			}
 
 		case uint8(0x0A):
@@ -205,17 +218,17 @@ func (chip *Chip) decodeExecute(instr uint16) bool {
 
 		case uint8(0x29):
 			// font character
-			chip.I = GetCharAddr(chip.V[x])
+			cons.i = getCharAddr(cons.v[x])
 
 		case uint8(0x33):
 			// BCD
-			nbr := chip.V[x]
+			nbr := cons.v[x]
 			hundreds := (nbr / 100) % 10
 			tens := (nbr / 10) % 10
 			ones := nbr % 10
-			chip.Memory[chip.I] = hundreds
-			chip.Memory[chip.I + 1] = tens
-			chip.Memory[chip.I + 2] = ones
+			cons.memory[cons.i] = hundreds
+			cons.memory[cons.i + 1] = tens
+			cons.memory[cons.i + 2] = ones
 
 		case uint8(0x55):
 			// store

@@ -2,16 +2,18 @@ package emu
 
 const FONT_OFFSET = int(0x50)
 
-func (chip *Chip) PutFont() {
+// putFont puts the font into the memory of the console.
+func putFont(cons *Console) {
 	i := FONT_OFFSET
 	for _, digit := range font {
 		for _, bt := range digit {
-			chip.Memory[i] = bt
+			cons.memory[i] = bt
 		}
 	}
 }
 
-func GetCharAddr(ch uint8) uint16 {
+// getCharAddr returns the memory address of a character.
+func getCharAddr(ch uint8) uint16 {
 	return uint16(FONT_OFFSET) + uint16(ch) * 5
 }
 

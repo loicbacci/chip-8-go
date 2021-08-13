@@ -7,14 +7,15 @@ import (
 	emu "github.com/baccigal/chip-8/emu"
 )
 
-func Run(chip *emu.Chip) {
+// Run launches the GUI and the emulator
+func Run(chip *emu.Console) {
 	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
 		panic(err)
 	}
 	defer sdl.Quit()
 
 	window, err := sdl.CreateWindow("chip-8", sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
-		emu.WIDTH*10, emu.HEIGHT*10, sdl.WINDOW_SHOWN)
+		emu.BUFFER_WIDTH*10, emu.BUFFER_HEIGHT*10, sdl.WINDOW_SHOWN)
 	if err != nil {
 		panic(err)
 	}
@@ -29,8 +30,8 @@ func Run(chip *emu.Chip) {
 			canvas.SetDrawColor(255, 0, 0, 255)
 			canvas.Clear()
 
-			for y := uint8(0); y < emu.HEIGHT; y++ {
-				for x := uint8(0); x < emu.WIDTH; x++ {
+			for y := uint8(0); y < emu.BUFFER_HEIGHT; y++ {
+				for x := uint8(0); x < emu.BUFFER_WIDTH; x++ {
 					if chip.GetBit(x, y) == 1 {
 						canvas.SetDrawColor(255, 255, 255, 255)
 					} else {
