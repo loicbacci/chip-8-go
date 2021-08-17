@@ -18,6 +18,7 @@ type Console struct {
 	v [16]uint8
 
 	config *Config
+	keys [16]bool
 }
 
 const BUFFER_WIDTH = 64
@@ -87,6 +88,10 @@ func (chip *Console) Cycle() bool {
 	return chip.decodeExecute(chip.fetch())
 }
 
+func (cons *Console) SetKey(i int, pressed bool) {
+	cons.keys[i] = pressed
+}
+
 // NewConsole creates a new console.
 func NewConsole() *Console {
 	memory := [4096]byte{}
@@ -94,18 +99,20 @@ func NewConsole() *Console {
 	stack := make([]uint16, 0)
 	v := [16]uint8{}
 	config := NewConfig(false)
+	keys := [16]bool{}
 
 	console := &Console{
-		memory,
-		display,
+		memory: memory,
+		buffer: display,
 		// put the PC to the beginning of the ROM
-		uint16(0x200),
-		0,
-		stack,
-		0,
-		0,
-		v,
-		config,
+		pc: uint16(0x200),
+		i: 0,
+		stack: stack,
+		delayTimer: 0,
+		soundTimer: 0,
+		v: v,
+		config: config,
+		keys: keys,
 	}
 
 	putFont(console)

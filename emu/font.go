@@ -8,6 +8,7 @@ func putFont(cons *Console) {
 	for _, digit := range font {
 		for _, bt := range digit {
 			cons.memory[i] = bt
+			i += 1
 		}
 	}
 }
